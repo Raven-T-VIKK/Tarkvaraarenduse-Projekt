@@ -20,7 +20,7 @@ chat = pygame.transform.scale(chat_raw, (260, 220))
 
 # VIKK logo
 vikk_raw = pygame.image.load("VIKK_logo.png").convert_alpha()
-vikk_korgus = 35
+vikk_korgus = 350
 vikk_laius = int(vikk_raw.get_width() * vikk_korgus / vikk_raw.get_height())
 vikk = pygame.transform.scale(vikk_raw, (vikk_laius, vikk_korgus))
 
@@ -95,10 +95,6 @@ while True:
 
     # VIKK logo
     screen.blit(vikk, (5, 5))
-
-    # Kaareline tekst
-    draw_arc_text(screen, "TULEVIK 2050", 60, 322, 260, 100, (255, 220, 50))
-
 
     pygame.display.flip()
     clock.tick(60)
