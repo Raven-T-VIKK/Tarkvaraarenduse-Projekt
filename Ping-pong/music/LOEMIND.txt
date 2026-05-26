@@ -1,0 +1,3 @@
+# Pane siia oma helifailid:
+# - background.mp3  (taustamuusika)
+# - hit.wav         (kokkupõrke efekt, Bfxr-ga loodud)
