@@ -9,7 +9,6 @@ LAIUS = 640
 KORGUS = 480
 ekraan = pygame.display.set_mode((LAIUS, KORGUS))
 pygame.display.set_caption("Rally Mäng")
-
 kell = pygame.time.Clock()
 
 # ── VÄRVIKONSTANTID ──────────────────────────────────────────────────────────
@@ -34,36 +33,57 @@ except:
 try:
     sinine_auto = pygame.image.load("f1_blue.png")
     sinine_auto = pygame.transform.scale(sinine_auto, (60, 100))
+    sinine_auto = pygame.transform.rotate(sinine_auto, 180)  # pööra õiget pidi
 except:
     sinine_auto = pygame.Surface((60, 100))
     sinine_auto.fill((0, 0, 255))
 
-# ── TEE PAIGUTUS JA PIIRID ───────────────────────────────────────────────────
-# Mängija auto ei saa neist piiridest välja sõita
+# ── TEE PAIGUTUS JA KOLM RIDA ────────────────────────────────────────────────
 TEE_VASAK = 150
 TEE_PAREM = 490
 AUTO_LAIUS = 60
+AUTO_KORGUS = 100
+TURVA_VAHE = 20
 
-# ── MÄNGIJA AUTO ALGPOSITSIOON ───────────────────────────────────────────────
-# Paigutatakse ekraani allossa horisontaalselt keskele
-punane_x = LAIUS // 2 - AUTO_LAIUS // 2
+RADADE_ARV = 3
+RADA_LAIUS = (TEE_PAREM - TEE_VASAK) // RADADE_ARV
+
+RADA_X = [
+    TEE_VASAK + i * RADA_LAIUS + (RADA_LAIUS - AUTO_LAIUS) // 2
+    for i in range(RADADE_ARV)
+]
+
+# ── KIIRUS – kõik autod sõidavad alati sama kiirusega ───────────────────────
+KIIRUS = 5
+
+# ── MÄNGIJA AUTO – paigal kesk-rajal ────────────────────────────────────────
+punane_x = RADA_X[1]
 punane_y = KORGUS - 120
 
 # ── VASTASTE AUTODE LOOMINE ──────────────────────────────────────────────────
-# Iga auto saab juhusliku x-asukoha teel ja negatiivse y (tuleb ülevalt)
+# Autod saavad juhusliku algpositsiooni – muster on iga kord erinev
 SINISTE_ARV = 4
 
-def loo_sinine_auto(indeks):
-    """Loob uue sinise auto juhuslikul positsioonil teel."""
-    x = random.randint(TEE_VASAK, TEE_PAREM - AUTO_LAIUS)
-    y = -100 - indeks * 120  # Alustavad erinevatelt kõrgustelt
-    kiirus = random.randint(3, 7)
-    return {"x": x, "y": y, "kiirus": kiirus}
+def loo_sinine_auto(rada):
+    """Loob sinise auto kindlal rajal juhusliku y-positsiooniga."""
+    return {
+        "x": RADA_X[rada],
+        "y": random.randint(-500, -80),
+        "kiirus": KIIRUS,
+        "rada": rada
+    }
 
-sinised_autod = [loo_sinine_auto(i) for i in range(SINISTE_ARV)]
+# Loome autod ja tagame, et sama raja autod ei spawni üksteise peale
+sinised_autod = []
+for rada in [0, 1, 2, 0]:
+    auto = loo_sinine_auto(rada)
+    for teine in sinised_autod:
+        if teine["rada"] == auto["rada"]:
+            if abs(auto["y"] - teine["y"]) < AUTO_KORGUS + TURVA_VAHE:
+                auto["y"] = teine["y"] - AUTO_KORGUS - TURVA_VAHE - random.randint(0, 150)
+    sinised_autod.append(auto)
 
-# ── SKOORI KUVAMINE ──────────────────────────────────────────────────────────
-# Tekstile lisatakse must vari, et see oleks igal taustal loetav
+# ── SKOOR ────────────────────────────────────────────────────────────────────
 skoor = 0
 font = pygame.font.SysFont("Arial", 28, bold=True)
 
@@ -73,27 +93,32 @@ def kuva_skoor():
     ekraan.blit(varjutekst, (12, 12))
     ekraan.blit(tekst, (10, 10))
 
-# ── PEAMÄNGUSIL (käivitub iga kaadriga ~50 FPS) ──────────────────────────────
+# ── PEAMÄNGUSIL (50 FPS) ─────────────────────────────────────────────────────
 while True:
     kell.tick(50)
 
-    # ── SÜNDMUSTE TÖÖTLUS (aken suletakse) ──────────────────────────────────
+    # ── SÜNDMUSTE TÖÖTLUS ────────────────────────────────────────────────────
     for sundmus in pygame.event.get():
         if sundmus.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
 
-    # ── VASTASTE LIIKUMINE JA SKOOR ──────────────────────────────────────────
-    # Kui auto jõuab ekraani alla, loetakse see möödumiseks ja skoor tõuseb
+    # ── VASTASTE LIIKUMINE ───────────────────────────────────────────────────
     for auto in sinised_autod:
-        auto["y"] += auto["kiirus"]
+        auto["y"] += KIIRUS
+
+        # ── TAASKÄIVITUS – juhuslik spawn, mitte alati sama koht ────────────
         if auto["y"] > KORGUS:
             skoor += 1
-            auto["x"] = random.randint(TEE_VASAK, TEE_PAREM - AUTO_LAIUS)
-            auto["y"] = random.randint(-200, -60)
-            auto["kiirus"] = random.randint(3, 7)
+            auto["y"] = random.randint(-400, -80)
 
-    # ── JOONISTAMINE (järjekord on oluline: taust → vastased → mängija → UI) ─
+            # Lükkame kaugemale üles, kui sama raja auto on liiga lähedal
+            for teine in sinised_autod:
+                if teine is not auto and teine["rada"] == auto["rada"]:
+                    if auto["y"] + AUTO_KORGUS + TURVA_VAHE > teine["y"]:
+                        auto["y"] = teine["y"] - AUTO_KORGUS - TURVA_VAHE
+
+    # ── JOONISTAMINE (taust → vastased → mängija → UI) ───────────────────────
     ekraan.blit(taust, (0, 0))
 
     for auto in sinised_autod:
