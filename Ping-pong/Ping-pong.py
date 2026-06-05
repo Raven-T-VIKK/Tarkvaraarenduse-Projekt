@@ -57,10 +57,10 @@ class Game:
 
     # --- Palli lähtestamine ---
     def reset_ball(self):
-        self.ball_x = float(WIDTH // 2 - BALL_SIZE // 2)
-        self.ball_y = float(60)
-        self.ball_sx = random.choice([-1, 1]) * 4.0
-        self.ball_sy = 4.0
+        self.ball_x = 0.0  # muudab palli start positsiooni
+        self.ball_y = 0.0  # ülemine serv
+        self.ball_sx = -4.0  # liigub vasakule
+        self.ball_sy = 4.0  # liigub alla
 
     # --- Mängu käivitamine ---
     def start(self):
@@ -107,15 +107,11 @@ class Game:
             self.ball_y = PAD_Y - BALL_SIZE
             self.score += 1
 
-            # --- Nurga varieerimine tabamiskohast ---
-            hit_offset = (self.ball_x + BALL_SIZE / 2) - (self.pad_x + PAD_W / 2)
-            self.ball_sx += hit_offset * 0.07
-            self.ball_sx = max(-7.0, min(7.0, self.ball_sx))
-
-        # --- Pall jõuab alumise ääreni ---
+        # --- Pall põrkab alumisest servast ---
         if self.ball_y + BALL_SIZE >= HEIGHT:
             self.score -= 1
-            self.reset_ball()
+            self.ball_y = HEIGHT - BALL_SIZE
+            self.ball_sy = -abs(self.ball_sy)
 
     def draw(self, surface):
         # --- Joonistamine (taust → alus → pall → UI) ---
