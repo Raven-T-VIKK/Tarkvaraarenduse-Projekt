@@ -41,7 +41,7 @@ def make_background():
 
 background = make_background()
 
-# --- Mängija andmed ---
+# --- Konstandid ---
 BALL_SIZE = 20
 PAD_W, PAD_H = 120, 20
 PAD_Y = int(HEIGHT / 1.5)
@@ -55,12 +55,14 @@ class Game:
         self.pad_x = (WIDTH - PAD_W) // 2
         self.pad_speed = 3
 
+    # --- Palli lähtestamine ---
     def reset_ball(self):
         self.ball_x = float(WIDTH // 2 - BALL_SIZE // 2)
         self.ball_y = float(60)
         self.ball_sx = random.choice([-1, 1]) * 4.0
         self.ball_sy = 4.0
 
+    # --- Mängu käivitamine ---
     def start(self):
         self.running_game = True
         self.score = 0
@@ -72,24 +74,22 @@ class Game:
         if not self.running_game:
             return
 
-        # Pall liigub
+        # --- Palli liikumine ---
         self.ball_x += self.ball_sx
         self.ball_y += self.ball_sy
 
-        # Pall põrkab vasakult/paremalt seinalt
+        # --- Seintelt põrkamine ---
         if self.ball_x <= 0:
             self.ball_x = 0
             self.ball_sx = abs(self.ball_sx)
         if self.ball_x + BALL_SIZE >= WIDTH:
             self.ball_x = WIDTH - BALL_SIZE
             self.ball_sx = -abs(self.ball_sx)
-
-        # Pall põrkab ülemiselt seinalt
         if self.ball_y <= 0:
             self.ball_y = 0
             self.ball_sy = abs(self.ball_sy)
 
-        # Alus liigub
+        # --- Aluse liikumine ---
         self.pad_x += self.pad_speed
         if self.pad_x <= 0:
             self.pad_x = 0
@@ -98,7 +98,7 @@ class Game:
             self.pad_x = WIDTH - PAD_W
             self.pad_speed = -abs(self.pad_speed)
 
-        # Kokkupõrge: pall ja alus
+        # --- Kokkupõrge: pall ja alus ---
         ball_rect = pygame.Rect(int(self.ball_x), int(self.ball_y), BALL_SIZE, BALL_SIZE)
         pad_rect = pygame.Rect(int(self.pad_x), PAD_Y, PAD_W, PAD_H)
 
@@ -107,34 +107,30 @@ class Game:
             self.ball_y = PAD_Y - BALL_SIZE
             self.score += 1
 
-            # Nurga varieerimine sõltuvalt tabamiskohast
+            # --- Nurga varieerimine tabamiskohast ---
             hit_offset = (self.ball_x + BALL_SIZE / 2) - (self.pad_x + PAD_W / 2)
             self.ball_sx += hit_offset * 0.07
             self.ball_sx = max(-7.0, min(7.0, self.ball_sx))
 
-        # Pall puudutab alumist äärt
+        # --- Pall jõuab alumise ääreni ---
         if self.ball_y + BALL_SIZE >= HEIGHT:
             self.score -= 1
             self.reset_ball()
 
     def draw(self, surface):
-        # Taust
+        # --- Joonistamine (taust → alus → pall → UI) ---
         surface.blit(background, (0, 0))
-
-        # Alus
         surface.blit(pad_img, (int(self.pad_x), PAD_Y))
-
-        # Pall
         surface.blit(ball_img, (int(self.ball_x), int(self.ball_y)))
 
-        # Skoor
+        # --- Skoor ---
         score_surf = font.render(f"SKOOR: {self.score}", True, (255, 255, 255))
         score_bg = pygame.Surface((score_surf.get_width() + 20, 36), pygame.SRCALPHA)
         score_bg.fill((30, 30, 80, 150))
         surface.blit(score_bg, (8, 8))
         surface.blit(score_surf, (18, 12))
 
-        # Algusekraan
+        # --- Algusekraan ---
         if not self.running_game:
             msg = font.render("Vajuta TÜHIKUT alustamiseks", True, (50, 50, 120))
             x = (WIDTH - msg.get_width()) // 2
@@ -150,6 +146,7 @@ def main():
     game = Game()
 
     while True:
+        # --- Sündmuste töötlus ---
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -165,6 +162,7 @@ def main():
                 if not game.running_game:
                     game.start()
 
+        # --- Uuendamine ja joonistamine ---
         game.update()
         game.draw(screen)
         pygame.display.flip()
