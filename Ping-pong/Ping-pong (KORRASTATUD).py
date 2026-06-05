@@ -74,9 +74,9 @@ class Game:
 
     # --- PALLI LÄHTESTAMINE ---
     def reset_ball(self):
-        self.ball_x  = float(WIDTH // 2 - BALL_SIZE // 2)
-        self.ball_y  = float(60)
-        self.ball_sx = random.choice([-1, 1]) * 4.0
+        self.ball_x = 0.0
+        self.ball_y = 0.0
+        self.ball_sx = 4.0
         self.ball_sy = 4.0
 
     # --- MÄNGU KÄIVITAMINE ---
