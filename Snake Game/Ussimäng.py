@@ -638,4 +638,4 @@ class SnakeMang:
 
 if __name__ == "__main__":
     mang = SnakeMang()   # Loob mangu objekti ja initsialiseeriib koik
-    mang.kaivita()        # Kaivitab pohistsukli
+    mang.kaivita()        # Kaivitab pohistsuklilk1
