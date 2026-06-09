@@ -10,7 +10,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Hiir")  # ← MUUDA: akna pealkiri
 
 clock = pygame.time.Clock()
-FPS = 60                           # ← MUUDA: kaadrisagedus (suurem = sujuvam, kuid rohkem CPU)
+FPS = 60                           # ← MUUDA: kaadrisagedus (suurem = sujuvam, kuid rohkem CPU kulutus)
 
 # --- VÄRVID ---
 TAUST = (173, 216, 230)            # ← MUUDA: taustavärv (R, G, B) — praegu helesinene
