@@ -3,169 +3,288 @@ import sys
 import random
 import os
 
+# --- Initsialiseerimine ---
 pygame.init()
+
+# --- Heli initsialiseerimine ---
 try:
     pygame.mixer.init()
     mixer_ok = True
 except pygame.error:
     mixer_ok = False
 
-# Ekraani seaded
-W, H = 640, 480
-screen = pygame.display.set_mode((W, H))
+WIDTH, HEIGHT = 640, 480
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("PingPong")
 
-# Värvid
-TAEVAS = (135, 206, 235)
-PRUUN = (139, 69, 19)
-HELEPRUUN = (160, 82, 45)
-ORANŽ = (255, 140, 0)
-TUMEORANŽ = (204, 85, 0)
-MUST = (0, 0, 0)
-PUNANE = (200, 0, 0)
-VALGE = (255, 255, 255)
-
-font = pygame.font.SysFont(None, 36)
-big_font = pygame.font.SysFont(None, 72)
 clock = pygame.time.Clock()
+FPS = 60
 
-# Taustamuusika laadimine
-# Otsib background.wav skripti kaustast, seejärel töökataloogist
-def laadi_muusika():
+# --- Värvid ---
+SKY_TOP = (168, 216, 234)
+SKY_BOTTOM = (201, 232, 245)
+TEXT_COLOR = (30, 30, 80)
+SCORE_BG = (30, 30, 80, 140)
+
+# --- Pildid ---
+ball_img_raw = pygame.image.load("ball.png").convert_alpha()
+ball_img = pygame.transform.scale(ball_img_raw, (20, 20))
+
+pad_img_raw = pygame.image.load("pad.png").convert_alpha()
+pad_img = pygame.transform.scale(pad_img_raw, (120, 20))
+
+# --- Fondi laadimine ---
+font = pygame.font.SysFont("Courier New", 22, bold=True)
+
+# --- Helifaili laadimine ---
+def laadi_heli(failinimi):
+    """Otsib helifaili skripti kaustast ja töökataloogist."""
+    if not mixer_ok:
+        return None
+    script_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+    cwd = os.path.abspath(os.getcwd())
+    kandidaadid = [
+        os.path.join(script_dir, failinimi),
+        os.path.join(cwd, failinimi),
+    ]
+    for tee in kandidaadid:
+        if os.path.exists(tee):
+            try:
+                return pygame.mixer.Sound(tee)
+            except pygame.error:
+                continue
+    return None
+
+heli_hit = laadi_heli("hit.mp3")  # Heli kui pall põrkab vastu platvormi
+heli_end = laadi_heli("end.mp3")  # Heli kui mäng lõpeb
+
+# --- Taustamuusika laadimine ---
+def laadi_taustamuusika(failinimi):
+    """Laeb taustamuusika pygame.mixer.music mooduli abil."""
     if not mixer_ok:
         return False
-    # 1) Skripti kaust (töötab ka PyCharmis)
     script_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
-    # 2) Jooksev töökataloog (PyCharmi "Run" käivitab sageli siit)
     cwd = os.path.abspath(os.getcwd())
-
     kandidaadid = [
-        os.path.join(script_dir, "background.wav"),
-        os.path.join(cwd, "background.wav"),
+        os.path.join(script_dir, failinimi),
+        os.path.join(cwd, failinimi),
     ]
-
     for tee in kandidaadid:
         if os.path.exists(tee):
             try:
                 pygame.mixer.music.load(tee)
-                pygame.mixer.music.play(-1)  # -1 = korda lõputult
                 return True
             except pygame.error:
                 continue
     return False
 
-muusika_ok = laadi_muusika()
+tausta_muusika_ok = laadi_taustamuusika("background.wav")
 
-# Mängu muutujad
-ball = pygame.Rect(W - 30, 30, 20, 20)
-ball_dx, ball_dy = 4 * random.choice([-1, 1]), 4
+# --- Taustamuusika laadimine ---
+def laadi_taustamuusika(failinimi):
+    """Laeb taustamuusika pygame.mixer.music abil."""
+    if not mixer_ok:
+        return False
+    script_dir = os.path.abspath(os.path.dirname(os.path.realpath(__file__)))
+    cwd = os.path.abspath(os.getcwd())
+    kandidaadid = [
+        os.path.join(script_dir, failinimi),
+        os.path.join(cwd, failinimi),
+    ]
+    for tee in kandidaadid:
+        if os.path.exists(tee):
+            try:
+                pygame.mixer.music.load(tee)
+                return True
+            except pygame.error:
+                continue
+    return False
 
-pad = pygame.Rect(260, 420, 120, 20)
-PAD_SPEED = 6
+muusika_ok = laadi_taustamuusika("background.wav")
 
-score = 0
-game_over = False
+# --- Taustagradiendi loomine ---
+def make_background():
+    surf = pygame.Surface((WIDTH, HEIGHT))
+    for y in range(HEIGHT):
+        t = y / HEIGHT
+        r = int(SKY_TOP[0] + (SKY_BOTTOM[0] - SKY_TOP[0]) * t)
+        g = int(SKY_TOP[1] + (SKY_BOTTOM[1] - SKY_TOP[1]) * t)
+        b = int(SKY_TOP[2] + (SKY_BOTTOM[2] - SKY_TOP[2]) * t)
+        pygame.draw.line(surf, (r, g, b), (0, y), (WIDTH, y))
+    return surf
 
-def draw():
-    screen.fill(TAEVAS)
+background = make_background()
 
-    # Skoor ülemises nurgas
-    tekst = font.render(f"Skoor: {score}", True, MUST)
-    screen.blit(tekst, (10, 10))
+# --- Konstandid ---
+BALL_SIZE = 20
+PAD_W, PAD_H = 120, 20
+PAD_Y = int(HEIGHT / 1.5)
+PAD_SPEED = 6  # Klaviatuuri liikumiskiirus
 
-    # Alus
-    pygame.draw.rect(screen, PRUUN, pad)
-    pygame.draw.rect(screen, HELEPRUUN, (pad.x + 5, pad.y + 4, pad.width - 10, 6))
+# --- Mängu olek ---
+class Game:
+    def __init__(self):
+        self.score = 0
+        self.running_game = False
+        self.game_over = False
+        self.reset_ball()
+        self.pad_x = (WIDTH - PAD_W) // 2
 
-    # Pall
-    pygame.draw.circle(screen, ORANŽ, ball.center, 10)
-    pygame.draw.circle(screen, TUMEORANŽ, ball.center, 10, 2)
+    # --- Palli lähtestamine ---
+    def reset_ball(self):
+        self.ball_x = 0.0
+        self.ball_y = 0.0
+        self.ball_sx = -4.0
+        self.ball_sy = 4.0
 
-    pygame.display.flip()
+    # --- Mängu käivitamine ---
+    def start(self):
+        self.running_game = True
+        self.game_over = False
+        self.score = 0
+        self.reset_ball()
+        self.pad_x = (WIDTH - PAD_W) // 2
+        # Käivita taustamuusika lõputus tsüklis (-1)
+        if tausta_muusika_ok:
+            pygame.mixer.music.play(-1)
+        # Taustamuusika käivitamine (lõputu kordus)
+        if muusika_ok:
+            pygame.mixer.music.play(-1)
 
-def draw_game_over():
-    screen.fill(TAEVAS)
+    def update(self, keys):
+        if not self.running_game or self.game_over:
+            return
 
-    # "Mäng läbi" tekst
-    yl_tekst = big_font.render("MÄNG LÄBI!", True, PUNANE)
-    screen.blit(yl_tekst, (W // 2 - yl_tekst.get_width() // 2, H // 2 - 80))
+        # --- Aluse juhtimine klaviatuuriga (← →) ---
+        if keys[pygame.K_LEFT]:
+            self.pad_x -= PAD_SPEED
+        if keys[pygame.K_RIGHT]:
+            self.pad_x += PAD_SPEED
 
-    # Lõplik skoor
-    skoor_tekst = font.render(f"Lõplik skoor: {score}", True, MUST)
-    screen.blit(skoor_tekst, (W // 2 - skoor_tekst.get_width() // 2, H // 2))
+        # --- Alus ei lähe mängu piiridest välja ---
+        if self.pad_x < 0:
+            self.pad_x = 0
+        if self.pad_x + PAD_W > WIDTH:
+            self.pad_x = WIDTH - PAD_W
 
-    # Uuesti mängimise juhend
-    uuesti = font.render("Vajuta R – mängi uuesti   |   ESC – välju", True, MUST)
-    screen.blit(uuesti, (W // 2 - uuesti.get_width() // 2, H // 2 + 60))
+        # --- Palli liikumine ---
+        self.ball_x += self.ball_sx
+        self.ball_y += self.ball_sy
 
-    pygame.display.flip()
+        # --- Seintelt põrkamine ---
+        if self.ball_x <= 0:
+            self.ball_x = 0
+            self.ball_sx = abs(self.ball_sx)
+        if self.ball_x + BALL_SIZE >= WIDTH:
+            self.ball_x = WIDTH - BALL_SIZE
+            self.ball_sx = -abs(self.ball_sx)
+        if self.ball_y <= 0:
+            self.ball_y = 0
+            self.ball_sy = abs(self.ball_sy)
 
-def reset_game():
-    global ball, ball_dx, ball_dy, score, game_over
-    ball = pygame.Rect(W - 30, 30, 20, 20)
-    ball_dx = 4 * random.choice([-1, 1])
-    ball_dy = 4
-    pad.x = 260
-    score = 0
-    game_over = False
-    if mixer_ok:
-        laadi_muusika()
+        # --- Kokkupõrge: pall ja alus ---
+        ball_rect = pygame.Rect(int(self.ball_x), int(self.ball_y), BALL_SIZE, BALL_SIZE)
+        pad_rect = pygame.Rect(int(self.pad_x), PAD_Y, PAD_W, PAD_H)
 
-running = True
-while running:
-    clock.tick(60)
+        if self.ball_sy > 0 and ball_rect.colliderect(pad_rect):
+            self.ball_sy = -abs(self.ball_sy)
+            self.ball_y = PAD_Y - BALL_SIZE
+            self.score += 1
+            if heli_hit:
+                heli_hit.play()
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-        if event.type == pygame.KEYDOWN:
-            if game_over:
-                if event.key == pygame.K_r:
-                    reset_game()
-                elif event.key == pygame.K_ESCAPE:
-                    running = False
+        # --- Pall puudutab alumist äärt → mäng lõpeb ---
+        if self.ball_y + BALL_SIZE >= HEIGHT:
+            self.game_over = True
+            self.running_game = False
+            # Peata taustamuusika ja mängi lõpuheli
+            if tausta_muusika_ok:
+                pygame.mixer.music.stop()
+            if heli_end:
+                heli_end.play()
 
-    if game_over:
-        draw_game_over()
-        continue
+    def draw(self, surface):
+        # --- Joonistamine (taust → alus → pall → UI) ---
+        surface.blit(background, (0, 0))
+        surface.blit(pad_img, (int(self.pad_x), PAD_Y))
+        surface.blit(ball_img, (int(self.ball_x), int(self.ball_y)))
 
-    # Klaviatuuri sisend: aluse juhtimine x-suunal
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT]:
-        pad.x -= PAD_SPEED
-    if keys[pygame.K_RIGHT]:
-        pad.x += PAD_SPEED
+        # --- Skoor ---
+        score_surf = font.render(f"SKOOR: {self.score}", True, (255, 255, 255))
+        score_bg = pygame.Surface((score_surf.get_width() + 20, 36), pygame.SRCALPHA)
+        score_bg.fill((30, 30, 80, 150))
+        surface.blit(score_bg, (8, 8))
+        surface.blit(score_surf, (18, 12))
 
-    # Alus ei lähe mängu piiridest välja
-    if pad.left < 0:
-        pad.left = 0
-    if pad.right > W:
-        pad.right = W
+        # --- Algusekraan ---
+        if not self.running_game and not self.game_over:
+            msg = font.render("Vajuta TÜHIKUT alustamiseks", True, (50, 50, 120))
+            x = (WIDTH - msg.get_width()) // 2
+            y = HEIGHT // 2 - 20
+            bg = pygame.Surface((msg.get_width() + 24, msg.get_height() + 12), pygame.SRCALPHA)
+            bg.fill((255, 255, 255, 160))
+            surface.blit(bg, (x - 12, y - 6))
+            surface.blit(msg, (x, y))
 
-    # Pall liigub
-    ball.x += ball_dx
-    ball.y += ball_dy
+        # --- Mäng läbi ekraan ---
+        if self.game_over:
+            # Pealkiri "MÄNG LÄBI"
+            over_surf = font.render("MÄNG LÄBI!", True, (180, 30, 30))
+            ox = (WIDTH - over_surf.get_width()) // 2
+            oy = HEIGHT // 2 - 40
+            over_bg = pygame.Surface((over_surf.get_width() + 24, over_surf.get_height() + 12), pygame.SRCALPHA)
+            over_bg.fill((255, 255, 255, 180))
+            surface.blit(over_bg, (ox - 12, oy - 6))
+            surface.blit(over_surf, (ox, oy))
 
-    # Põrkub vasakult/paremalt seinalt
-    if ball.left <= 0 or ball.right >= W:
-        ball_dx *= -1
+            # Lõplik skoor
+            final_surf = font.render(f"Lõplik skoor: {self.score}", True, (50, 50, 120))
+            fx = (WIDTH - final_surf.get_width()) // 2
+            fy = oy + 40
+            final_bg = pygame.Surface((final_surf.get_width() + 24, final_surf.get_height() + 12), pygame.SRCALPHA)
+            final_bg.fill((255, 255, 255, 160))
+            surface.blit(final_bg, (fx - 12, fy - 6))
+            surface.blit(final_surf, (fx, fy))
 
-    # Põrkub ülemisest seinast
-    if ball.top <= 0:
-        ball_dy *= -1
+            # Uuesti mängimise juhis
+            restart_surf = font.render("Vajuta TÜHIKUT uuesti mängimiseks", True, (50, 50, 120))
+            rx = (WIDTH - restart_surf.get_width()) // 2
+            ry = fy + 40
+            restart_bg = pygame.Surface((restart_surf.get_width() + 24, restart_surf.get_height() + 12), pygame.SRCALPHA)
+            restart_bg.fill((255, 255, 255, 160))
+            surface.blit(restart_bg, (rx - 12, ry - 6))
+            surface.blit(restart_surf, (rx, ry))
 
-    # Kokkupõrge alusega (ainult kui pall langeb alla)
-    if ball_dy > 0 and ball.colliderect(pad):
-        ball_dy *= -1
-        score += 1
 
-    # Pall kukkus alla: mäng lõpetatakse
-    if ball.top > H:
-        game_over = True
-        if mixer_ok:
-            pygame.mixer.music.stop()
+# --- Peamine tsükkel ---
+def main():
+    game = Game()
 
-    draw()
+    while True:
+        keys = pygame.key.get_pressed()
 
-pygame.quit()
-sys.exit()
+        # --- Sündmuste töötlus ---
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    if not game.running_game:
+                        game.start()
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if not game.running_game:
+                    game.start()
+
+        # --- Uuendamine ja joonistamine ---
+        game.update(keys)
+        game.draw(screen)
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+if __name__ == "__main__":
+    main()
