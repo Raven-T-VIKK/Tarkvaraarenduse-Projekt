@@ -258,10 +258,8 @@ class SnakeMang:
         # Koguarv tikke mängu algusest, kasutatakse boonuse ajastamiseks
         self.tiki_loendur     = 0
 
-        # Loob tühja hulga kivide positsioonide hoidmiseks
+        # Loob tühja hulga kivide positsioonide hoidmiseks (takistused eemaldatud)
         self.takistused = set()
-        # Genereerib kivid praegusele tasemele vastavalt
-        self.loo_takistused()
 
         # Paigutab esimese toiduosakese juhuslikku vabasse kohta
         self.toit = self.loo_toit_positsioon()
@@ -322,8 +320,8 @@ class SnakeMang:
         while True:
             # Genereerib juhusliku positsiooni mänguväljaku piirides
             pos = (random.randint(0, VALI_LAIUS - 1), random.randint(0, VALI_KORGUS - 1))
-            # Kontrollib et toit ei ilmu ussi, kivi ega boonustoidu peale
-            if pos not in uss_set and pos not in self.takistused and pos != self.boonus_toit:
+            # Kontrollib et toit ei ilmu ussi ega boonustoidu peale
+            if pos not in uss_set and pos != self.boonus_toit:
                 # Tagastab leitud sobiva positsiooni
                 return pos
 
@@ -334,8 +332,8 @@ class SnakeMang:
         while True:
             # Genereerib juhusliku positsiooni mänguväljaku piirides
             pos = (random.randint(0, VALI_LAIUS - 1), random.randint(0, VALI_KORGUS - 1))
-            # Kontrollib et boonustoit ei ilmu ussi, kivi ega tavatoidu peale
-            if pos not in uss_set and pos not in self.takistused and pos != self.toit:
+            # Kontrollib et boonustoit ei ilmu ussi ega tavatoidu peale
+            if pos not in uss_set and pos != self.toit:
                 # Tagastab leitud sobiva positsiooni
                 return pos
 
@@ -462,12 +460,6 @@ class SnakeMang:
             self.ussi_surm()
             return
 
-        # Kontrollib kas pea puutub kivitakistusega
-        if uus_pea in self.takistused:
-            # Uss põrkas kiviga — käivitab surmaprotseduuri
-            self.ussi_surm()
-            return
-
         # Lisab uue pea ussi nimekirja ette (uss on liikunud)
         self.uss.insert(0, uus_pea)
 
@@ -555,8 +547,6 @@ class SnakeMang:
             self.liikumise_akumulaator = 0
             # Kuvab keskel suure "TASE X!" animatsiooniteksiteksit
             self.lisa_animatsioon("TASE " + str(self.tase) + "!", (VALI_LAIUS//2, VALI_KORGUS//2), KOLLANE)
-            # Genereerib uued kivid uuele tasemele (rohkem kive)
-            self.loo_takistused()
 
     def ussi_surm(self):
         # Peatab mänguloogika uuendamise
@@ -597,8 +587,6 @@ class SnakeMang:
         else:
             # Joonistab eelrenderdatud ruudustiku ühe blit-operatsiooniga
             self.ekraan.blit(self.ruudustik_surf, (0, 0))
-            # Joonistab kivitakistused väljakule
-            self.joonista_takistused()
             # Joonistab ussi silmadega pea ja gradueeruva kehaga
             self.joonista_uss()
             # Joonistab tavatoidu ja boonustoidu (kui on väljakul)
