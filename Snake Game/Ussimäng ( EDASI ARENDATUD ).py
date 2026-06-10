@@ -155,7 +155,7 @@ class SnakeMang:
         # Loob mänguakna määratud laiuse ja kõrgusega
         self.ekraan = pygame.display.set_mode((LAIUS, KORGUS))
         # Seab akna tiitliribale pealkirja
-        pygame.display.set_caption("Sinu-Moodi Ussimang")
+        pygame.display.set_caption("Ussimang")
         # Loob kella, millega piiratakse mängu kaadrisagedust
         self.kell = pygame.time.Clock()
 
