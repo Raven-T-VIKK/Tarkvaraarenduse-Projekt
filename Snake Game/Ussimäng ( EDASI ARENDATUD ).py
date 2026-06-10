@@ -752,7 +752,7 @@ class SnakeMang:
 
     def joonista_menuu(self):
         # Renderdab mängu pealkirja rohelisega suure fondiga
-        pealkiri = self.font_suur.render("SINU-MOODI USSIMANG", True, ROHELINE)
+        pealkiri = self.font_suur.render("USSIMANG", True, ROHELINE)
         # Kuvab pealkirja ekraani ülaosas horisontaalselt keskel
         self.ekraan.blit(pealkiri, (LAIUS//2 - pealkiri.get_width()//2, 100))
 
